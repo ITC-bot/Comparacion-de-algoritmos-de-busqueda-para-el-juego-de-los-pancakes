@@ -1,3 +1,11 @@
+/*
+Hecho por Marcos Abaroa
+fecha del ultimo cambio:28/03/23
+NOTAS GENERALES:
+--IDA* sera superado por A y viceversa, depende mucho del como este programado y la configuracion recibida de pancakes*
+--Si el algoritmo de busqueda en profundidad no encuentra solucion, simplemente se le da mas profundidad en el main
+*/
+
 #include <iostream>
 #include <stack>
 #include <string>
@@ -9,7 +17,6 @@
 #include <algorithm>
 #include <functional>
 #include <math.h>
-
 
 float inf = std::numeric_limits<float>::infinity();
 using namespace std;
@@ -94,64 +101,45 @@ void bfs(string pancakes) {
 }
 
 // Función que realiza la búsqueda en profundidad
-void dfs(string pancakes) {
-    stack<string> pila;
-    unordered_set<string> visitados;
-    int count = 0;
-    pila.push(pancakes);
-    visitados.insert(pancakes);
-    while (!pila.empty()) {
-        string curr_pancakes = pila.top();
-        pila.pop();
-        count++;
-        if (esta_ordenada(curr_pancakes)) {
-            cout << "Solucion encontrada: " << curr_pancakes << endl;
-            cout << "Numero de nodos visitados: " << count << endl;
-            return;
-        }
-        vector<string> sucesores = generar_sucesores(curr_pancakes);
-        for (string sucesor : sucesores) {
-            if (visitados.find(sucesor) == visitados.end()) {
-                pila.push(sucesor);
-                visitados.insert(sucesor);
-                count++;
+bool dfs(string curr, string end, unordered_set<string>& visited, int depth, int max_depth, int& count){
+    visited.insert(curr);
+    count++;
+    if (curr == end){
+        return true;
+    }
+    if (depth == max_depth){
+        return false;
+    }
+    vector<string> sucesores = generar_sucesores(curr);
+    for (string sucesor : sucesores){
+        if (visited.count(sucesor) == 0){
+            if (dfs(sucesor, end, visited, depth+1, max_depth, count)){
+                return true;
             }
         }
     }
-    cout << "No se encontro solucion." << endl;
-    cout << "Numero de nodos visitados: " << count << endl;
+    return false;
 }
 
-// Función que realiza la búsqueda en profundidad iterativa
-void idfs(string pancakes) {
-    int count = 0;
-    for (int depth = 1; depth <= pancakes.size(); depth++) {
-        stack<string> pila;
-        unordered_set<string> visitados;
-        pila.push(pancakes);
-        visitados.insert(pancakes);
-        while (!pila.empty()) {
-            string curr_pancakes = pila.top();
-            pila.pop();
-            count++;
-            if (esta_ordenada(curr_pancakes)) {
-                cout << "Solucion encontrada: " << curr_pancakes << endl;
-                cout << "Numero de nodos visitados: " << count << endl;
-                return;
-            }
-            if (depth <= curr_pancakes.size()) {
-                vector<string> sucesores = generar_sucesores(curr_pancakes);
-                for (string sucesor : sucesores) {
-                    if (visitados.find(sucesor) == visitados.end()) {
-                        pila.push(sucesor);
-                        visitados.insert(sucesor);
-                    }
-                }
-            }
+// Función recursiva que realiza la búsqueda en profundidad iterativa
+bool idfs(string pancakes, int depth, int& count) {
+    count++;
+    if (esta_ordenada(pancakes)) {
+        cout << "Solucion encontrada: " << pancakes << endl;
+        cout << "Numero de nodos visitados: " << count << endl;
+        return true;
+    }
+    if (depth > pancakes.size()) {
+        return false;
+    }
+    vector<string> sucesores = generar_sucesores(pancakes);
+    for (string sucesor : sucesores) {
+        bool encontrado = idfs(sucesor, depth + 1, count);
+        if (encontrado) {
+            return true;
         }
     }
-    cout << "No se encontro solucion." << endl;
-    cout << "Numero de nodos visitados: " << count << endl;
+    return false;
 }
 
 // Función que implementa la heuristica
@@ -197,66 +185,33 @@ void a_star(string pancakes) {
     cout << "Numero de nodos visitados: " << count << endl;
 }
 
-// Función que implementa la heuristica pero de tipo float para IDA*
-float H(const string& pancakes, const string& target) {
-    float c = 0;
-    for (int i = 0; i < pancakes.size(); i++) {
-        if (pancakes[i] != target[i])
-            c++;
-        if (i < pancakes.size()-1 && abs(pancakes[i]-pancakes[i+1]) > 1)
-            c++;
+// Función que implementa la búsqueda con IDA*
+string ida_estrella(const string& pancakes, const string& target, float cost, float threshold, string path, int& nodos_visitados) {
+    float f = cost + h4(pancakes, target);
+    if (f > threshold) {
+        return "inf";
     }
-    return c;
-}
-// Función que realiza la búsqueda IDA
-void ida_star(string pancakes) {
-    string target = pancakes;
-    sort(target.begin(), target.end());
-    int umbral = H(pancakes, target);
-    int count = 0;
-    while (true) {
-        int proximo_umbral = INT_MAX;
-        unordered_set<string> visitados;
-        stack<pair<string, int>> pila;
-        pila.push({pancakes, 0});
-        while (!pila.empty()) {
-            string curr_pancakes = pila.top().first;
-            int g = pila.top().second;
-            pila.pop();
-            count++;
-
-            int f = g + H(curr_pancakes, target);
-            if (f > umbral) {
-                proximo_umbral = min(proximo_umbral, f);
-                continue;
-            }
-
-            if (curr_pancakes == target) {
-                cout << "Solucion encontrada: " << curr_pancakes << endl;
-                cout << "Numero de nodos visitados: " << count << endl;
-                return;
-            }
-            vector<string> sucesores = generar_sucesores(curr_pancakes);
-            sort(sucesores.begin(), sucesores.end(), [target](const string& a, const string& b) {
-                return h4(a, target) < H(b, target);
-            });
-            for (string sucesor : sucesores) {
-                if (visitados.find(sucesor) == visitados.end()) {
-                    pila.push({sucesor, g+1});
-                    visitados.insert(sucesor);
-                }
-            }
-        }
-        if (proximo_umbral == INT_MAX) {
-            cout << "No se encontro solucion." << endl;
-            cout << "Numero de nodos visitados: " << count << endl;
-            return;
-        }
-        umbral = proximo_umbral;
+    if (esta_ordenada(pancakes)) {
+        return pancakes;
     }
+    string min_path = "inf";
+    for (auto sucesor : generar_sucesores(pancakes)) {
+        if (path.find(sucesor) != std::string::npos || cost + h4(sucesor, target) > threshold) {
+            nodos_visitados++;
+            continue;
+        }
+        float new_cost = cost + 1;
+        string t = ida_estrella(sucesor, target, new_cost, threshold, path + sucesor + " ", nodos_visitados);
+        if (t != "inf" && (min_path == "inf" || t.size() < min_path.size())) {
+            min_path = t;
+        }
+    }
+    return min_path;
 }
+
 //Funcion principal
 int main() {
+
     int n;
     cout << "Comparacion de algoritmos de busqueda\n";
     cout << "Ingrese el numero de caracteres de pancakes: ";
@@ -264,25 +219,66 @@ int main() {
     string pancakes = generar_caracteres_aleatorios(n);
     cout << "Pila de pancakes original: " << pancakes << endl;
     cout <<" "<<endl;
+    //BUSQUEDA EN AMPLITUD
     cout << "--Busqueda en amplitud--";
     cout <<" "<<endl;
     bfs(pancakes);
     cout <<" "<<endl;
+    //BUSQUEDA EN PROFUNDIDAD
     cout << "--Busqueda en profundidad--";
     cout <<" "<<endl;
-    dfs(pancakes);
+    string pancakeEnd = pancakes;
+    sort(pancakeEnd.begin(), pancakeEnd.end());
+    unordered_set<string> visited;
+    int count = 0;
+    int max_depth = 100; // profundidad máxima de la búsqueda
+    bool found = dfs(pancakes, pancakeEnd, visited, 0, max_depth, count);
+    cout << "Solucion encontrada: " << pancakeEnd << endl;
+    if (found){
+        cout << "Numero de nodos visitados: " << count << endl;
+    }
+    else {
+        cout << "No se encontro una solucion" << endl;
+    }
     cout <<" "<<endl;
-    cout << "--Busqueda en profundidad iterativa--";
+    //BUSQUEDA EN PROFUNDIDAD ITERATIVA
+    cout << "--Busqueda en profundidad iterativa--"<<endl;;
+    int count2 = 0;
+    bool encontrado = false;
+    for (int depth = 1; depth <= pancakes.size(); depth++) {
+        encontrado = idfs(pancakes, depth, count2);
+        if (encontrado) {
+            break;
+        }
+    }
+    if (!encontrado) {
+        cout << "No se encontro solucion." << endl;
+        cout << "Numero de nodos visitados: " << count2 << endl;
+    }
     cout <<" "<<endl;
-    idfs(pancakes);
-    cout <<" "<<endl;
-    cout << "--Busqueda A*--";
-    cout <<" "<<endl;
+    //BUSQUEDA A*
+    cout << "--Busqueda A*--"<<endl;;
     a_star(pancakes);
+    //BUSQUEDA IDA*
     cout <<" "<<endl;
-    cout << "--Busqueda IDA*--";
-    cout <<" "<<endl;
-    ida_star(pancakes);
+    cout << "--Busqueda A*--"<<endl;;
+    string target = pancakes;
+    sort(target.begin(), target.end());  // Pila objetivo ordenada
+    float threshold = h4(pancakes, target);  // Umbral inicial
+    int nodos_visitados = 0;
+    while (true) {
+        string ruta_movimiento = ida_estrella(pancakes, target, 0, threshold, "", nodos_visitados);
+        if (ruta_movimiento == "inf") {
+            // Si la ruta de movimiento mínima no fue encontrada, aumenta el umbral
+            threshold++;
+        } else {
+            // Si se encontró la ruta de movimiento mínima, finaliza el ciclo
+            cout << "Solucion encontrada : " << ruta_movimiento << endl;
+            break;
+        }
+    }
+    cout << "Numero de nodos visitados: " << nodos_visitados << endl;
+
     return 0;
 }
 
